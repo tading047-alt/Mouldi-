@@ -1,65 +1,54 @@
 import pandas as pd
 import plotly.express as px
 import os
+import random
 
-def run_full_project():
-    print("🚀 بدء المشروع: معالجة البيانات مدمجة آلياً...")
+def run_standalone_project():
+    print("🚀 بدء مشروع توليد ومعالجة البيانات آلياً (بدون ملفات خارجية)...")
 
-    # --- 1. مرحلة البيانات (توليد بيانات وهمية احترافية) ---
-    # بدلاً من قراءة ملف خارجي، نصنع البيانات هنا مباشرة
-    raw_data = {
-        'Product': ['Laptop', 'Mouse', 'Monitor', 'Keyboard', 'Webcam', 'Laptop', 'Mouse'],
-        'Quantity': [15, 60, 20, 35, 30, 2, 5],
-        'Price': [1200, 25, 210, 45, 85, 1200, 25],
-        'Cost': [850, 12, 150, 22, 45, 850, 12]
-    }
-    df = pd.DataFrame(raw_data)
-    print("✅ تم توليد البيانات بنجاح.")
-
-    # --- 2. مرحلة التنظيف (Cleaning) ---
-    print("🧹 جاري تنظيف البيانات المكررة...")
-    # دمج المبيعات المكررة لنفس المنتج
-    df = df.groupby('Product').agg({
-        'Quantity': 'sum',
-        'Price': 'mean',
-        'Cost': 'mean'
-    }).reset_index()
-
-    # --- 3. مرحلة التحليل (Analysis) ---
-    print("📊 جاري إجراء الحسابات المالية...")
-    df['Total_Revenue'] = df['Quantity'] * df['Price']
-    df['Total_Profit'] = df['Total_Revenue'] - (df['Quantity'] * df['Cost'])
+    # --- 1. توليد معطيات عشوائية (Data Generation) ---
+    products = ['أيفون', 'سامسونج', 'ماك بوك', 'ساعة ذكية', 'سماعات']
+    data = []
     
-    # حساب نسبة الربح لكل منتج
-    df['Profit_Margin_%'] = (df['Total_Profit'] / df['Total_Revenue']) * 100
+    for i in range(20):  # توليد 20 عملية بيع وهمية
+        product = random.choice(products)
+        quantity = random.randint(1, 10)
+        price = random.randint(200, 1500)
+        data.append([product, quantity, price])
     
-    # --- 4. مرحلة التصدير (Export) ---
+    df = pd.DataFrame(data, columns=['المنتج', 'الكمية', 'السعر_الفردي'])
+    print("✅ تم توليد 20 عملية بيع بنجاح.")
+
+    # --- 2. المعالجة الحسابية (Data Processing) ---
+    df['إجمالي_المبيعات'] = df['الكمية'] * df['السعر_الفردي']
+    df['الضريبة_15%'] = df['إجمالي_المبيعات'] * 0.15
+    df['الصافي_النهائي'] = df['إجمالي_المبيعات'] - df['الضريبة_15%']
+
+    # تجميع النتائج حسب المنتج لتقديم خلاصة
+    summary = df.groupby('المنتج')[['إجمالي_المبيعات', 'الصافي_النهائي']].sum().reset_index()
+
+    # --- 3. عرض النتيجة في الـ Terminal (Immediate Result) ---
+    print("\n📊 ملخص النتائج النهائية:")
+    print("-" * 40)
+    print(summary.to_string(index=False))
+    print("-" * 40)
+
+    # --- 4. إرسال النتيجة إلى ملفات (Output) ---
     os.makedirs('output', exist_ok=True)
-    df.to_excel('output/final_analysis_report.xlsx', index=False)
-    print("📂 تم حفظ تقرير الإكسل في مجلد output.")
-
-    # --- 5. مرحلة الرسم البياني (Visualization) ---
-    print("📈 جاري إنشاء لوحة البيانات التفاعلية...")
-    fig = px.bar(
-        df, 
-        x='Product', 
-        y='Total_Profit',
-        color='Profit_Margin_%',
-        title='تحليل الأرباح ونسبة الهامش لكل منتج - 2026',
-        labels={'Total_Profit': 'صافي الربح ($)', 'Profit_Margin_%': 'نسبة الربح %'},
-        text_auto='.2f',
-        template='plotly_dark'
-    )
     
-    fig.write_html('output/interactive_dashboard.html')
-    print("✅ تم إنشاء الرسم البياني التفاعلي بنجاح.")
+    # حفظ الإكسل
+    summary.to_excel('output/results_summary.xlsx', index=False)
+    
+    # إنشاء الرسم البياني
+    fig = px.pie(summary, values='الصافي_النهائي', names='المنتج', 
+                 title='توزيع الأرباح الصافية حسب المنتج',
+                 template='plotly_dark')
+    fig.write_html('output/final_chart.html')
+
+    print(f"\n✅ اكتملت المهمة. تفقد مجلد 'output' للملفات الناتجة.")
 
 if __name__ == "__main__":
-    try:
-        run_full_project()
-        print("\n" + "="*40)
-        print("🌟 مبروك! الكود عمل بنجاح بدون ملفات خارجية.")
-        print("تحقق الآن من مجلد 'output' لرؤية النتائج.")
-        print("="*40)
-    except Exception as e:
-        print(f"❌ حدث خطأ تقني: {e}")
+    # تثبيت المكتبات إذا لم تكن موجودة (اختياري للـ Codespace)
+    # os.system('pip install pandas plotly openpyxl')
+    
+    run_standalone_project()
