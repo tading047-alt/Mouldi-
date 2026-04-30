@@ -2,67 +2,87 @@ import pandas as pd
 import plotly.express as px
 import os
 
-# 1. دالة تحميل البيانات (Pre-loading)
-def load_data(file_path):
-    print("--- مرحلة تحميل البيانات ---")
-    # نقرأ الملف مع التأكد من جلب الأعمدة الأساسية فقط لتسريع العمل
-    try:
-        df = pd.read_excel(file_path)
-        return df
-    except Exception as e:
-        print(f"خطأ في تحميل الملف: {e}")
-        return None
+# --- 1. إعداد المسارات ---
+INPUT_FILE = 'data/sales_data.xlsx'
+OUTPUT_FOLDER = 'output'
 
-# 2. محرك التنظيف (Cleaning Engine) - الجزء الذي ستطوره لاحقاً
+def setup_project():
+    """تهيئة المجلدات والملفات اللازمة للتأكد من عمل الكود"""
+    if not os.path.exists('data'):
+        os.makedirs('data')
+    if not os.path.exists(OUTPUT_FOLDER):
+        os.makedirs(OUTPUT_FOLDER)
+    
+    # إذا لم يجد ملف البيانات، سيقوم بإنشائه فوراً
+    if not os.path.exists(INPUT_FILE):
+        print("⚠️ ملف البيانات غير موجود.. جاري إنشاء ملف تجريبي...")
+        sample_data = {
+            'Date': ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05'],
+            'Product': ['Laptop', 'Mouse', 'Monitor', 'Keyboard', 'Webcam'],
+            'Quantity': [10, 50, 15, 30, 25],
+            'Price': [1200, 25, 200, 45, 80],
+            'Cost': [800, 10, 120, 20, 40]
+        }
+        pd.DataFrame(sample_data).to_excel(INPUT_FILE, index=False)
+        print(f"✅ تم إنشاء الملف بنجاح في: {INPUT_FILE}")
+
+# --- 2. محرك تنظيف البيانات ---
 def clean_data(df):
-    print("--- مرحلة تنظيف البيانات ---")
-    # حذف التكرار
-    df = df.drop_duplicates()
-    # ملء القيم المفقودة في الأعمدة الرقمية بصفر
-    df.fillna(0, inplace=True)
+    print("🧹 جاري تنظيف البيانات...")
+    df = df.drop_duplicates()  # حذف التكرار
+    df.fillna(0, inplace=True) # معالجة القيم المفقودة
     return df
 
-# 3. محرك التحليل (Analysis Logic)
-def analyze_sales(df):
-    print("--- مرحلة التحليل الحسابي ---")
-    # حساب إجمالي البيع (كمثال: الكمية * السعر)
-    # ملاحظة للعميل: يمكنك تعديل هذه المعادلة حسب نظامك المحاسبي
-    if 'Quantity' in df.columns and 'Price' in df.columns:
-        df['Total_Sales'] = df['Quantity'] * df['Price']
+# --- 3. محرك التحليل الحسابي ---
+def perform_analysis(df):
+    print("📊 جاري تحليل البيانات الحسابية...")
+    # حساب المبيعات والربح
+    df['Total_Sales'] = df['Quantity'] * df['Price']
+    df['Total_Cost'] = df['Quantity'] * df['Cost']
+    df['Profit'] = df['Total_Sales'] - df['Total_Cost']
     
-    # تجميع المبيعات حسب المنتج
-    summary = df.groupby('Product')['Total_Sales'].sum().reset_index()
+    # تجميع النتائج حسب المنتج
+    summary = df.groupby('Product')[['Total_Sales', 'Profit']].sum().reset_index()
     return df, summary
 
-# 4. محرك التصور البصري (Visualization)
-def create_dashboard(summary):
-    print("--- مرحلة إنشاء الرسوم البيانية ---")
-    fig = px.bar(summary, x='Product', y='Total_Sales', 
-                 title='إجمالي المبيعات حسب المنتج - 2026',
-                 labels={'Total_Sales': 'صافي الأرباح', 'Product': 'المنتج'},
-                 template='plotly_dark') # لمسة احترافية غامقة
+# --- 4. محرك الرسوم البيانية ---
+def generate_dashboard(summary):
+    print("📈 جاري إنشاء لوحة البيانات التفاعلية...")
+    fig = px.bar(
+        summary, 
+        x='Product', 
+        y='Profit',
+        title='صافي الأرباح لكل منتج - مشروع أتمتة 2026',
+        color='Profit',
+        labels={'Profit': 'الربح الصافي ($)', 'Product': 'المنتج'},
+        template='plotly_dark'  # مظهر احترافي داكن
+    )
     
-    # حفظ الرسم كملف تفاعلي يمكن للعميل فتحه
-    fig.write_html("output/sales_dashboard.html")
-    print("✅ تم إنشاء لوحة البيانات التفاعلية في مجلد output")
+    # حفظ الرسم البياني كملف HTML تفاعلي
+    fig.write_html(f"{OUTPUT_FOLDER}/dashboard.html")
 
-# التشغيل الأساسي للمشروع
+# --- التشغيل الرئيسي للمشروع ---
 if __name__ == "__main__":
-    # تأكد من وجود مجلد المخرجات
-    if not os.path.exists('output'): os.makedirs('output')
-
-    # المسار الافتراضي (يمكنك تغييره بسهولة)
-    DATA_PATH = "data/your_file.xlsx" 
+    # 1. التهيئة
+    setup_project()
     
-    # تنفيذ الخطوات
-    raw_df = load_data(DATA_PATH)
-    if raw_df is not None:
-        cleaned_df = clean_data(raw_df)
-        final_df, report = analyze_sales(cleaned_df)
-        
-        # تصدير النتائج النهائية لإكسل منسق
-        final_df.to_excel("output/final_report.xlsx", index=False)
-        
-        # إنشاء الرسم البياني
-        create_dashboard(report)
-        print("\n🚀 المشروع جاهز للتسليم!")
+    # 2. قراءة البيانات
+    raw_data = pd.read_excel(INPUT_FILE)
+    
+    # 3. التنظيف
+    cleaned_data = clean_data(raw_data)
+    
+    # 4. التحليل
+    detailed_df, final_summary = perform_analysis(cleaned_data)
+    
+    # 5. تصدير التقارير
+    detailed_df.to_excel(f"{OUTPUT_FOLDER}/detailed_report.xlsx", index=False)
+    final_summary.to_excel(f"{OUTPUT_FOLDER}/summary_report.xlsx", index=False)
+    
+    # 6. الرسم البياني
+    generate_dashboard(final_summary)
+    
+    print("\n" + "="*30)
+    print("🚀 تم الانتهاء من المشروع بنجاح!")
+    print(f"📁 تفقد مجلد '{OUTPUT_FOLDER}' لرؤية المخرجات.")
+    print("="*30)
